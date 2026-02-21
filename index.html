@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Shyam Narayan — Robotics Engineer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --gold:     #ffd700;
+      --dim-gold: #b8960c;
+      --bronze:   #cd7f32;
+      --bg:       #080600;
+      --bg2:      #0d0a00;
+      --panel:    #0f0c00;
+      --border:   #3a2800;
+      --accent:   #ff9900;
+      --muted:    #5a4400;
+    }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+    body{
+      background:var(--bg);color:var(--gold);
+      font-family:'Share Tech Mono',monospace;
+      overflow-x:hidden;cursor:none;
+    }
+    /* scanlines */
+    body::before{
+      content:'';position:fixed;inset:0;pointer-events:none;z-index:9998;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 4px);
+    }
+    @keyframes flicker{0%,100%{opacity:1}93%{opacity:.88}97%{opacity:.96}}
+    body{animation:flicker 10s infinite;}
+
+    /* cursor dot */
+    #cursor-dot{
+      position:fixed;width:6px;height:6px;border-radius:50%;
+      background:var(--gold);box-shadow:0 0 8px var(--gold);
+      pointer-events:none;z-index:9997;transform:translate(-50%,-50%);
+    }
+
+    /* ══ NAV — always visible ══ */
+    nav{
+      position:fixed;top:0;left:0;right:0;z-index:2000;
+      background:rgba(8,6,0,0.97);
+      border-bottom:1px solid var(--border);
+      display:flex;align-items:center;
+      padding:0 2.5rem;height:70px;
+    }
+    /* left: identity — hidden until drone delivers name */
+    .nav-identity{
+      display:flex;flex-direction:column;justify-content:center;gap:3px;
+      flex-shrink:1;max-width:300px;
+      opacity:0;transition:opacity .4s ease;
+      margin-right:3rem;
+    }
+    .nav-identity.visible{opacity:1;}
+    .nav-name{font-family:'Orbitron',monospace;font-weight:900;font-size:.72rem;color:var(--gold);letter-spacing:1px;text-shadow:0 0 12px rgba(255,215,0,.35);white-space:nowrap;}
+    .nav-sub {font-family:'Share Tech Mono',monospace;font-size:.46rem;color:var(--dim-gold);letter-spacing:2.5px;text-transform:uppercase;white-space:nowrap;}
+    /* right: links */
+    nav ul{list-style:none;display:flex;gap:2.5rem;margin-left:auto;}
+    nav a{color:var(--muted);text-decoration:none;font-size:.72rem;letter-spacing:2px;text-transform:uppercase;transition:color .2s;}
+    nav a:hover,nav a.active{color:var(--gold);text-shadow:0 0 8px var(--gold);}
+
+    /* ══ INTRO OVERLAY ══ */
+    #intro{
+      position:fixed;inset:0;z-index:3000;
+      background:var(--bg);pointer-events:all;
+      opacity:1;transition:opacity .8s ease;
+    }
+    #intro.fading{opacity:0;pointer-events:none;}
+    #intro.gone{display:none;}
+
+    /* intro grid */
+    #intro-grid{
+      position:absolute;inset:0;pointer-events:none;
+      background-image:
+        linear-gradient(rgba(255,215,0,0.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,215,0,0.03) 1px,transparent 1px);
+      background-size:60px 60px;
+      opacity:0;transition:opacity 1.2s ease;
+    }
+    #intro-grid.visible{opacity:1;}
+
+    /* propellers */
+    .prop    {animation:spinP    .13s linear infinite;transform-origin:center;}
+    .prop-ccw{animation:spinPCCW .13s linear infinite;transform-origin:center;}
+    @keyframes spinP   {to{transform:rotate(360deg);}}
+    @keyframes spinPCCW{to{transform:rotate(-360deg);}}
+    .led  {animation:ledBlink .75s step-end infinite;}
+    .led2 {animation:ledBlink .75s .37s step-end infinite;}
+    @keyframes ledBlink{50%{opacity:.08;}}
+
+    /* ══ DRONE — hero only, fades on scroll ══ */
+    #drone{
+      position:fixed;
+      z-index:3001;pointer-events:none;
+      top:50vh;left:50vw;
+      transform:translate(-50%,-50%) scale(0.03);
+      opacity:0;
+      filter:drop-shadow(0 0 24px rgba(255,215,0,0.45));
+      transition:opacity .4s ease;
+      will-change:transform,top,left;
+    }
+    #drone-banner{
+      position:fixed;z-index:3000;pointer-events:none;
+      opacity:0;text-align:center;
+      transition:opacity .4s ease;
+    }
+    #drone-banner.visible{opacity:1;}
+
+    .banner-string{
+      width:2px;height:32px;
+      background:linear-gradient(to bottom,rgba(255,215,0,.65),rgba(255,215,0,.08));
+      margin:0 auto;
+    }
+    .banner-body{
+      border:1px solid rgba(255,215,0,.5);
+      background:rgba(6,4,0,.95);
+      padding:18px 52px 20px;
+      position:relative;
+      box-shadow:0 0 50px rgba(255,215,0,.14),inset 0 0 30px rgba(255,215,0,.04);
+      white-space:nowrap;
+    }
+    /* corner rivets */
+    .banner-body::before,.banner-body::after{
+      content:'';position:absolute;width:7px;height:7px;border-radius:50%;
+      background:var(--gold);box-shadow:0 0 8px var(--gold);
+    }
+    .banner-body::before{top:-3.5px;left:-3.5px;}
+    .banner-body::after {top:-3.5px;right:-3.5px;}
+    .rv-bl,.rv-br{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);bottom:-3.5px;}
+    .rv-bl{left:-3.5px}.rv-br{right:-3.5px}
+
+    /* scan line */
+    .banner-scan{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+    .banner-scan::after{
+      content:'';position:absolute;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,transparent,rgba(255,215,0,.22),transparent);
+      animation:scan 3.5s linear infinite;
+    }
+    @keyframes scan{0%{top:-3px;opacity:0;}8%{opacity:1;}92%{opacity:1;}100%{top:105%;opacity:0;}}
+
+    .banner-eyebrow{
+      font-family:'Share Tech Mono',monospace;font-size:.58rem;
+      color:rgba(255,215,0,.38);letter-spacing:6px;text-transform:uppercase;margin-bottom:8px;
+    }
+    .banner-rule{
+      width:100%;height:1px;
+      background:linear-gradient(90deg,transparent,rgba(255,215,0,.4),transparent);
+      margin:7px 0;
+    }
+    .banner-name{
+      font-family:'Orbitron',monospace;font-weight:900;
+      font-size:clamp(1.8rem,4vw,3rem);letter-spacing:5px;
+      color:var(--gold);
+      text-shadow:0 0 28px var(--gold),0 0 60px rgba(255,215,0,.25);
+      line-height:1.05;display:block;
+    }
+    .banner-name2{
+      font-family:'Orbitron',monospace;font-weight:900;
+      font-size:clamp(1.8rem,4vw,3rem);letter-spacing:5px;
+      color:var(--bronze);
+      text-shadow:0 0 22px var(--bronze);
+      line-height:1.05;display:block;margin-bottom:6px;
+    }
+    /* typewriter row inside banner */
+    .banner-tw-row{
+      font-family:'VT323',monospace;font-size:1.55rem;
+      color:var(--dim-gold);letter-spacing:3px;
+      min-height:2rem;margin-top:4px;
+    }
+    .banner-tw-cursor{
+      display:inline-block;width:10px;height:1.25rem;
+      background:var(--gold);margin-left:3px;
+      animation:blink 1s step-end infinite;vertical-align:middle;
+    }
+    .banner-foot{
+      font-size:.52rem;color:rgba(255,215,0,.32);
+      letter-spacing:4px;text-transform:uppercase;margin-top:7px;
+    }
+
+    /* ══ HERO ══ */
+    #hero{
+      min-height:100vh;
+      padding:50px 4rem 4rem;
+      display:flex;flex-direction:column;justify-content:flex-end;
+      position:relative;overflow:hidden;
+    }
+    #hero::before{
+      content:'';position:absolute;inset:0;
+      background-image:
+        linear-gradient(rgba(255,215,0,.022) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,215,0,.022) 1px,transparent 1px);
+      background-size:50px 50px;animation:gridScroll 30s linear infinite;
+    }
+    @keyframes gridScroll{0%{background-position:0 0}100%{background-position:50px 50px}}
+    #hero::after{
+      content:'';position:absolute;inset:0;pointer-events:none;
+      background:radial-gradient(ellipse 90% 80% at 50% 40%,transparent 25%,var(--bg) 100%);
+    }
+    .hero-inner{position:relative;z-index:1;padding-bottom:4rem;display:flex;align-items:flex-end;min-height:calc(100vh - 70px);}
+    .hero-cta-wrap{position:fixed;bottom:2.5rem;left:50%;transform:translateX(-50%);z-index:100;opacity:0;transition:opacity .6s ease;}
+    .hero-cta-wrap.reveal{opacity:1;}
+
+    /* hero elements fade in via JS */
+    .hi{opacity:0;transform:translateY(18px);transition:opacity .65s ease,transform .65s ease;}
+    .hi.reveal{opacity:1;transform:translateY(0);}
+
+    .hero-eyebrow{font-size:.65rem;color:var(--accent);letter-spacing:5px;text-transform:uppercase;margin-bottom:1.2rem;}
+    .hero-name{font-family:'Orbitron',monospace;font-weight:900;font-size:clamp(2rem,5vw,3.8rem);line-height:1.05;margin-bottom:.4rem;}
+    .hero-name .n1{display:block;color:var(--gold);text-shadow:0 0 25px var(--gold),0 0 60px rgba(255,215,0,.2);}
+    .hero-name .n2{display:block;color:var(--bronze);text-shadow:0 0 20px var(--bronze);}
+    .hero-sub{font-family:'VT323',monospace;font-size:1.6rem;color:var(--dim-gold);letter-spacing:2px;margin:1rem 0 .5rem;min-height:2rem;}
+    .hero-meta{font-size:.68rem;color:var(--muted);letter-spacing:3px;margin-bottom:2.2rem;}
+    .hero-meta span{color:var(--accent);}
+    .hero-cta{
+      display:inline-block;padding:.72rem 2rem;
+      border:1px solid var(--gold);color:var(--gold);text-decoration:none;
+      font-size:.78rem;letter-spacing:3px;text-transform:uppercase;
+      position:relative;overflow:hidden;
+      transition:opacity .65s ease,transform .65s ease,box-shadow .3s;
+    }
+    .hero-cta::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:rgba(255,215,0,.08);transition:left .3s;}
+    .hero-cta:hover::before{left:0;}
+    .hero-cta:hover{box-shadow:0 0 20px rgba(255,215,0,.3);}
+
+    .cursor-blink{display:inline-block;width:10px;height:1.3rem;background:var(--gold);margin-left:3px;animation:blink 1s step-end infinite;vertical-align:middle;}
+    @keyframes blink{50%{opacity:0}}
+
+    /* ══ PAGE LAYOUT — two arm columns ══ */
+    .page-layout{display:flex;min-height:100vh;}
+
+    .arm-col{position:fixed;top:0;width:280px;height:100vh;pointer-events:none;z-index:800;}
+    .arm-col.left{left:0;}
+    .arm-col.right{right:0;}
+
+    .arm-floor{position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--border),transparent);}
+    .arm-base-plate{
+      position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+      width:110px;height:16px;background:var(--panel);
+      border:1px solid var(--dim-gold);border-radius:3px;
+      box-shadow:0 0 12px rgba(255,215,0,.12);
+    }
+    .arm-base-plate::before{
+      content:'';position:absolute;top:-5px;left:50%;transform:translateX(-50%);
+      width:28px;height:7px;background:var(--bg2);border:1px solid var(--dim-gold);border-radius:2px;
+    }
+    .arm-svg-wrap{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);width:240px;height:100%;overflow:visible;}
+    .arm-svg-wrap.over-content{opacity:.15;transition:opacity .3s;}
+    .arm-svg-wrap:not(.over-content){opacity:1;transition:opacity .3s;}
+
+    /* arms also fade in */
+    .arm-col{opacity:0;transition:opacity .7s ease;}
+    .arm-col.visible{opacity:1;}
+
+    .content-col{
+      margin-left:280px;margin-right:280px;flex:1;
+      border-left:1px solid var(--border);border-right:1px solid var(--border);
+    }
+
+    /* ══ SECTIONS ══ */
+    .section-wrap{padding:5rem 4rem;border-top:1px solid var(--border);}
+    .section-header{display:flex;align-items:center;gap:1.5rem;margin-bottom:3rem;}
+    .section-num{font-family:'VT323',monospace;font-size:3rem;color:var(--border);line-height:1;}
+    .section-title{font-family:'Orbitron',monospace;font-size:1.2rem;font-weight:700;letter-spacing:4px;color:var(--gold);text-transform:uppercase;transition:color .4s,text-shadow .4s;}
+    .section-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
+
+    .about-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:start;}
+    .terminal-box{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+    .terminal-bar{background:#0a0800;padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;border-bottom:1px solid var(--border);}
+    .dot{width:10px;height:10px;border-radius:50%;}
+    .dot.r{background:#ff4444}.dot.y{background:var(--accent)}.dot.g{background:var(--gold)}
+    .terminal-title{font-size:.65rem;color:var(--muted);margin-left:.5rem;letter-spacing:1px;}
+    .terminal-body{padding:1.5rem;font-size:.78rem;line-height:2;color:#887755;}
+    .terminal-body .prompt{color:var(--gold)}.terminal-body .cmd{color:var(--accent)}.terminal-body .out{color:#665533}.terminal-body .hi-t{color:var(--bronze)}
+    .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+    .stat-card{border:1px solid var(--border);padding:1.2rem;text-align:center;transition:all .3s;}
+    .stat-card:hover{border-color:var(--gold);box-shadow:0 0 15px rgba(255,215,0,.1);}
+    .stat-val{font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;color:var(--gold);text-shadow:0 0 10px rgba(255,215,0,.4);}
+    .stat-label{font-size:.65rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:.3rem;}
+
+    .projects-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;}
+    .project-card{border:1px solid var(--border);background:var(--panel);padding:1.5rem;position:relative;transition:all .3s;overflow:hidden;}
+    .project-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:0;background:var(--gold);transition:height .3s;}
+    .project-card:hover::before{height:100%;}
+    .project-card:hover{border-color:var(--dim-gold);box-shadow:0 0 25px rgba(255,215,0,.07);transform:translateY(-3px);}
+    .project-badge{display:inline-block;font-size:.6rem;color:var(--accent);border:1px solid var(--accent);padding:.15rem .5rem;letter-spacing:2px;margin-bottom:.8rem;}
+    .project-icon{font-size:2rem;margin-bottom:.6rem;}
+    .project-title{font-family:'Orbitron',monospace;font-size:.88rem;font-weight:700;color:var(--gold);margin-bottom:.6rem;letter-spacing:1px;}
+    .project-desc{font-size:.74rem;color:#665533;line-height:1.8;margin-bottom:1rem;}
+    .project-tags{display:flex;flex-wrap:wrap;gap:.4rem;}
+    .tag{font-size:.6rem;color:var(--bronze);border:1px solid rgba(205,127,50,.35);padding:.15rem .5rem;letter-spacing:1px;}
+
+    .edu-card{border:1px solid var(--border);background:var(--panel);padding:2rem;display:flex;justify-content:space-between;align-items:start;gap:2rem;}
+    .edu-school{font-family:'Orbitron',monospace;font-size:.95rem;color:var(--gold);margin-bottom:.4rem;}
+    .edu-degree{font-size:.78rem;color:var(--bronze);margin-bottom:.3rem;}
+    .edu-date{font-size:.7rem;color:var(--muted);}
+    .gpa-box{text-align:center;border:1px solid var(--gold);padding:1rem 1.5rem;flex-shrink:0;}
+    .gpa-val{font-family:'Orbitron',monospace;font-size:2.5rem;font-weight:900;color:var(--gold);text-shadow:0 0 15px var(--gold);}
+    .gpa-label{font-size:.65rem;color:var(--muted);letter-spacing:2px;}
+    .coursework{margin-top:1.5rem;}
+    .coursework-title{font-size:.65rem;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:.8rem;}
+    .course-tags{display:flex;flex-wrap:wrap;gap:.5rem;}
+    .course-tag{font-size:.67rem;color:#665533;border:1px solid var(--border);padding:.2rem .6rem;}
+
+    .skills-layout{display:grid;grid-template-columns:1fr 1fr;gap:3rem;}
+    .skill-group-title{font-family:'Orbitron',monospace;font-size:.7rem;color:var(--accent);letter-spacing:3px;margin-bottom:1.5rem;text-transform:uppercase;}
+    .skill-bar-wrap{margin-bottom:1.2rem;}
+    .skill-label{display:flex;justify-content:space-between;font-size:.74rem;color:#887755;margin-bottom:.4rem;letter-spacing:1px;}
+    .skill-label span:last-child{color:var(--gold);}
+    .bar-bg{height:4px;background:#0f0c00;border:1px solid var(--border);overflow:hidden;}
+    .bar-fill{height:100%;background:linear-gradient(90deg,var(--dim-gold),var(--gold));box-shadow:0 0 8px var(--gold);width:0;transition:width 1.5s cubic-bezier(.4,0,.2,1);}
+    .chip-grid{display:flex;flex-wrap:wrap;gap:.5rem;}
+    .chip{font-size:.7rem;color:var(--dim-gold);border:1px solid var(--border);padding:.3rem .7rem;letter-spacing:1px;transition:all .2s;cursor:default;}
+    .chip:hover{border-color:var(--gold);color:var(--gold);box-shadow:0 0 10px rgba(255,215,0,.12);}
+
+    .contact-inner{display:grid;grid-template-columns:1fr 1fr;gap:4rem;}
+    .contact-text{font-size:.8rem;color:#665533;line-height:2;margin-bottom:2rem;}
+    .contact-links{display:flex;flex-direction:column;gap:.8rem;}
+    .contact-link{display:flex;align-items:center;gap:1rem;text-decoration:none;color:#665533;font-size:.76rem;letter-spacing:1px;transition:color .2s;padding:.6rem 0;border-bottom:1px solid var(--border);}
+    .contact-link:hover{color:var(--gold);}
+    .form-group{margin-bottom:1rem;}
+    .form-group label{display:block;font-size:.63rem;color:var(--dim-gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:.4rem;}
+    .form-group input,.form-group textarea{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--gold);font-family:'Share Tech Mono',monospace;font-size:.8rem;padding:.6rem 1rem;outline:none;transition:border-color .2s;resize:none;}
+    .form-group input:focus,.form-group textarea:focus{border-color:var(--dim-gold);box-shadow:0 0 10px rgba(255,215,0,.08);}
+    .form-group textarea{height:90px;}
+    .submit-btn{width:100%;padding:.8rem;background:transparent;border:1px solid var(--gold);color:var(--gold);font-family:'Orbitron',monospace;font-size:.73rem;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all .3s;}
+    .submit-btn:hover{box-shadow:0 0 20px rgba(255,215,0,.25);background:rgba(255,215,0,.04);}
+
+    footer{text-align:center;padding:2rem;border-top:1px solid var(--border);font-size:.63rem;color:var(--border);letter-spacing:2px;}
+    footer span{color:var(--dim-gold);}
+
+    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border)}::-webkit-scrollbar-thumb:hover{background:var(--dim-gold)}
+
+    @media(max-width:1100px){
+      .arm-col{display:none;}
+      .content-col{margin:0;}
+      body{cursor:crosshair;}
+      #cursor-dot{display:none;}
+    }
+    @media(max-width:768px){
+      .about-grid,.skills-layout,.contact-inner{grid-template-columns:1fr;}
+      .edu-card{flex-direction:column;}
+      .section-wrap,#hero{padding:4rem 1.5rem;}
+    }
+  </style>
+</head>
+<body>
+
+<div id="cursor-dot"></div>
+
+<!-- INTRO OVERLAY -->
+<div id="intro">
+  <div id="intro-grid"></div>
+</div>
+
+<!-- THE ONE DRONE — bigger -->
+<div id="drone">
+  <svg id="drone-svg" width="420" height="210" viewBox="0 0 420 210" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Arms -->
+    <line x1="210" y1="94"  x2="62"  y2="45"  stroke="#ffd700" stroke-width="2.2" opacity=".5"/>
+    <line x1="210" y1="94"  x2="358" y2="45"  stroke="#ffd700" stroke-width="2.2" opacity=".5"/>
+    <line x1="210" y1="116" x2="62"  y2="165" stroke="#ffd700" stroke-width="2.2" opacity=".5"/>
+    <line x1="210" y1="116" x2="358" y2="165" stroke="#ffd700" stroke-width="2.2" opacity=".5"/>
+    <!-- arm glow -->
+    <line x1="210" y1="105" x2="62"  y2="45"  stroke="rgba(255,215,0,.07)" stroke-width="13"/>
+    <line x1="210" y1="105" x2="358" y2="45"  stroke="rgba(255,215,0,.07)" stroke-width="13"/>
+    <line x1="210" y1="105" x2="62"  y2="165" stroke="rgba(255,215,0,.07)" stroke-width="13"/>
+    <line x1="210" y1="105" x2="358" y2="165" stroke="rgba(255,215,0,.07)" stroke-width="13"/>
+    <!-- Nacelles -->
+    <ellipse cx="62"  cy="45"  rx="28" ry="13" fill="#0e0a00" stroke="#ffd700" stroke-width="1.6"/>
+    <ellipse cx="358" cy="45"  rx="28" ry="13" fill="#0e0a00" stroke="#ffd700" stroke-width="1.6"/>
+    <ellipse cx="62"  cy="165" rx="28" ry="13" fill="#0e0a00" stroke="#ffd700" stroke-width="1.6"/>
+    <ellipse cx="358" cy="165" rx="28" ry="13" fill="#0e0a00" stroke="#ffd700" stroke-width="1.6"/>
+    <!-- Propellers -->
+    <g class="prop" style="transform-origin:62px 45px">
+      <ellipse cx="62" cy="45" rx="60" ry="3.5" fill="rgba(255,215,0,.18)" stroke="rgba(255,215,0,.5)" stroke-width=".9"/>
+    </g>
+    <g class="prop-ccw" style="transform-origin:358px 45px">
+      <ellipse cx="358" cy="45" rx="60" ry="3.5" fill="rgba(255,215,0,.18)" stroke="rgba(255,215,0,.5)" stroke-width=".9"/>
+    </g>
+    <g class="prop-ccw" style="transform-origin:62px 165px">
+      <ellipse cx="62" cy="165" rx="60" ry="3.5" fill="rgba(255,215,0,.18)" stroke="rgba(255,215,0,.5)" stroke-width=".9"/>
+    </g>
+    <g class="prop" style="transform-origin:358px 165px">
+      <ellipse cx="358" cy="165" rx="60" ry="3.5" fill="rgba(255,215,0,.18)" stroke="rgba(255,215,0,.5)" stroke-width=".9"/>
+    </g>
+    <!-- Body hex -->
+    <polygon points="210,70 250,88 250,128 210,145 170,128 170,88" fill="#080600" stroke="#ffd700" stroke-width="2.2"/>
+    <polygon points="210,79 240,94 240,121 210,135 180,121 180,94" fill="none" stroke="rgba(255,215,0,.16)" stroke-width="1.2"/>
+    <line x1="210" y1="70"  x2="210" y2="145" stroke="rgba(255,215,0,.06)" stroke-width="1.2"/>
+    <line x1="170" y1="88"  x2="250" y2="128" stroke="rgba(255,215,0,.05)" stroke-width="1"/>
+    <line x1="250" y1="88"  x2="170" y2="128" stroke="rgba(255,215,0,.05)" stroke-width="1"/>
+    <!-- Camera dome -->
+    <ellipse cx="210" cy="107" rx="20" ry="15" fill="#060400" stroke="#cd7f32" stroke-width="1.8"/>
+    <ellipse cx="210" cy="107" rx="11" ry="9"  fill="#040200" stroke="#cd7f32" stroke-width="1.1"/>
+    <circle  cx="210" cy="107" r="4.5"         fill="#ffd700" opacity=".9"/>
+    <circle  cx="206" cy="103" r="1.8"         fill="white"   opacity=".4"/>
+    <!-- Antenna -->
+    <line x1="210" y1="70" x2="210" y2="55" stroke="#ffd700" stroke-width="1.5" opacity=".7"/>
+    <circle cx="210" cy="52" r="4"  fill="#ffd700" class="led"/>
+    <circle cx="210" cy="52" r="8"  fill="rgba(255,215,0,.12)" class="led"/>
+    <!-- LEDs -->
+    <circle cx="250" cy="88"  r="3.5" fill="#ff4444" class="led2"/>
+    <circle cx="170" cy="128" r="3.5" fill="#ffd700" class="led"/>
+    <circle cx="62"  cy="45"  r="2.5" fill="#ffd700" class="led2"/>
+    <circle cx="358" cy="165" r="2.5" fill="#ffd700" class="led"/>
+    <!-- Landing legs -->
+    <line x1="190" y1="145" x2="182" y2="172" stroke="#ffd700" stroke-width="1.5" opacity=".4"/>
+    <line x1="230" y1="145" x2="238" y2="172" stroke="#ffd700" stroke-width="1.5" opacity=".4"/>
+    <line x1="170" y1="172" x2="194" y2="172" stroke="#ffd700" stroke-width="2.2" opacity=".42"/>
+    <line x1="226" y1="172" x2="250" y2="172" stroke="#ffd700" stroke-width="2.2" opacity=".42"/>
+    <!-- String hook -->
+    <circle cx="210" cy="172" r="5" fill="rgba(255,215,0,.5)" stroke="#ffd700" stroke-width="1.2"/>
+  </svg>
+</div>
+
+<!-- BANNER (positioned relative to drone by JS) -->
+<div id="drone-banner">
+  <div class="banner-string"></div>
+  <div class="banner-body">
+    <div class="banner-scan"></div>
+    <div class="rv-bl"></div><div class="rv-br"></div>
+    <div class="banner-eyebrow">// PORTFOLIO.EXE — SYSTEMS ONLINE</div>
+    <div class="banner-rule"></div>
+    <span class="banner-name">SHYAM NARAYAN</span>
+    <span class="banner-name2">SUNDARARAJAN</span>
+    <div class="banner-rule"></div>
+    <div class="banner-tw-row"><span id="typewriter"></span><span class="banner-tw-cursor"></span></div>
+    <div class="banner-foot">UC Santa Cruz · San Jose, CA · GPA 3.93</div>
+  </div>
+</div>
+
+<nav id="main-nav">
+  <div class="nav-identity" id="nav-identity">
+    <div class="nav-name">SHYAM NARAYAN SUNDARARAJAN</div>
+    <div class="nav-sub">// Robotics Engineer &nbsp;·&nbsp; UC Santa Cruz</div>
+  </div>
+  <ul>
+    <li><a href="#hero"      data-section="hero">Home</a></li>
+    <li><a href="#about"     data-section="about">About</a></li>
+    <li><a href="#projects"  data-section="projects">Projects</a></li>
+    <li><a href="#education" data-section="education">Education</a></li>
+    <li><a href="#skills"    data-section="skills">Skills</a></li>
+    <li><a href="#contact"   data-section="contact">Contact</a></li>
+  </ul>
+</nav>
+
+<div class="page-layout">
+
+  <!-- LEFT ARM -->
+  <div class="arm-col left" id="arm-left-col">
+    <div class="arm-svg-wrap" id="arm-left-wrap">
+      <svg id="arm-left-svg" width="240" height="100%" viewBox="0 0 240 900" fill="none" style="overflow:visible;width:100%;height:100%;"></svg>
+    </div>
+    <div class="arm-base-plate"></div>
+    <div class="arm-floor"></div>
+  </div>
+
+  <!-- RIGHT ARM -->
+  <div class="arm-col right" id="arm-right-col">
+    <div class="arm-svg-wrap" id="arm-right-wrap">
+      <svg id="arm-right-svg" width="240" height="100%" viewBox="0 0 240 900" fill="none" style="overflow:visible;width:100%;height:100%;"></svg>
+    </div>
+    <div class="arm-base-plate"></div>
+    <div class="arm-floor"></div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content-col">
+    <section id="hero">
+      <div class="hero-inner"></div>
+    </section>
+    <div class="hero-cta-wrap hi">
+      <a href="#about" style="display:inline-block;padding:.72rem 2.5rem;border:1px solid var(--gold);color:var(--gold);text-decoration:none;font-size:.78rem;letter-spacing:3px;text-transform:uppercase;position:relative;overflow:hidden;transition:box-shadow .3s;background:rgba(8,6,0,.7);">[ View My Work ]</a>
+    </div>
+
+    <section class="section-wrap" id="about">
+      <div class="section-header"><span class="section-num">01</span><span class="section-title">About Me</span><div class="section-line"></div></div>
+      <div class="about-grid">
+        <div class="terminal-box">
+          <div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">shyam@ucsc:~$ profile.sh</span></div>
+          <div class="terminal-body">
+            <div><span class="prompt">$</span> <span class="cmd">whoami</span></div>
+            <div class="out">→ Robotics Engineering Student @ UC Santa Cruz</div><br/>
+            <div><span class="prompt">$</span> <span class="cmd">cat summary.txt</span></div>
+            <div class="out">→ Building end-to-end robotic systems across</div>
+            <div class="out">&nbsp;&nbsp;<span class="hi-t">perception</span>, <span class="hi-t">planning</span>, and <span class="hi-t">embedded control</span>.</div>
+            <div class="out">&nbsp;&nbsp;Implementing <span class="hi-t">LLM</span> and <span class="hi-t">RAG</span> in real robots.</div><br/>
+            <div><span class="prompt">$</span> <span class="cmd">cat research.log</span></div>
+            <div class="out">→ Quantum-Based Robotic Learning (In Progress)</div>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-val">3.93</div><div class="stat-label">GPA</div></div>
+          <div class="stat-card"><div class="stat-val">4</div><div class="stat-label">Projects</div></div>
+          <div class="stat-card"><div class="stat-val">5+</div><div class="stat-label">Languages</div></div>
+          <div class="stat-card"><div class="stat-val">∞</div><div class="stat-label">Curiosity</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-wrap" id="projects">
+      <div class="section-header"><span class="section-num">02</span><span class="section-title">Projects</span><div class="section-line"></div></div>
+      <div class="projects-grid">
+        <div class="project-card"><div class="project-badge">CRUZHACKS</div><div class="project-icon">🛒</div><div class="project-title">ShopShadow</div><div class="project-desc">Autonomous smart cart with YOLOv8 on 17K+ grocery images (90% accuracy), ONNX edge inference, Flask contactless billing on Luxonis neural camera.</div><div class="project-tags"><span class="tag">C++</span><span class="tag">YOLOv8</span><span class="tag">ONNX</span><span class="tag">Arduino</span><span class="tag">OpenCV</span></div></div>
+        <div class="project-card"><div class="project-badge">VLA · MANIPULATION</div><div class="project-icon">🦾</div><div class="project-title">ACT-Tac-Toe</div><div class="project-desc">Autonomous manipulation via VLA models. Trained ACT on A100/H100 GPUs with 100 teleoperation demos. Minimax + RAG for move reasoning.</div><div class="project-tags"><span class="tag">Python</span><span class="tag">VLA</span><span class="tag">RAG</span><span class="tag">A100/H100</span></div></div>
+        <div class="project-card"><div class="project-badge">RAG · LLM</div><div class="project-icon">🧠</div><div class="project-title">Jarvis</div><div class="project-desc">Production RAG system for document-grounded inference. Sub-second multi-document querying, handles rate limits and concurrent users reliably.</div><div class="project-tags"><span class="tag">Python</span><span class="tag">RAG</span><span class="tag">LLM</span><span class="tag">Embeddings</span></div></div>
+        <div class="project-card"><div class="project-badge">RESEARCH</div><div class="project-icon">⚛️</div><div class="project-title">Quantum Robotic Learning</div><div class="project-desc">Robot path-planning as QUBO optimization. Benchmarking vs A* and RRT* classical planners in simulation.</div><div class="project-tags"><span class="tag">QUBO</span><span class="tag">Python</span><span class="tag">A*</span><span class="tag">RRT*</span></div></div>
+      </div>
+    </section>
+
+    <section class="section-wrap" id="education">
+      <div class="section-header"><span class="section-num">03</span><span class="section-title">Education</span><div class="section-line"></div></div>
+      <div class="edu-card">
+        <div>
+          <div class="edu-school">University of California, Santa Cruz</div>
+          <div class="edu-degree">B.S. Robotics Engineering</div>
+          <div class="edu-date">September 2024 → June 2027 · Santa Cruz, CA</div>
+          <div class="coursework"><div class="coursework-title">// Relevant Coursework</div><div class="course-tags"><span class="course-tag">Embedded C</span><span class="course-tag">Machine Learning</span><span class="course-tag">Data Structures</span><span class="course-tag">Circuit Analysis</span><span class="course-tag">Logic Design (Verilog)</span></div></div>
+        </div>
+        <div class="gpa-box"><div class="gpa-val">3.93</div><div class="gpa-label">GPA</div></div>
+      </div>
+    </section>
+
+    <section class="section-wrap" id="skills">
+      <div class="section-header"><span class="section-num">04</span><span class="section-title">Skills</span><div class="section-line"></div></div>
+      <div class="skills-layout">
+        <div>
+          <div class="skill-group-title">// Core Proficiencies</div>
+          <div class="skill-bar-wrap"><div class="skill-label"><span>Python / C / C++</span><span>96%</span></div><div class="bar-bg"><div class="bar-fill" data-width="96"></div></div></div>
+          <div class="skill-bar-wrap"><div class="skill-label"><span>Computer Vision</span><span>91%</span></div><div class="bar-bg"><div class="bar-fill" data-width="91"></div></div></div>
+          <div class="skill-bar-wrap"><div class="skill-label"><span>LLM / RAG Systems</span><span>86%</span></div><div class="bar-bg"><div class="bar-fill" data-width="86"></div></div></div>
+          <div class="skill-bar-wrap"><div class="skill-label"><span>Machine Learning</span><span>82%</span></div><div class="bar-bg"><div class="bar-fill" data-width="82"></div></div></div>
+          <div class="skill-bar-wrap"><div class="skill-label"><span>ROS / ROS2</span><span>78%</span></div><div class="bar-bg"><div class="bar-fill" data-width="78"></div></div></div>
+          <div class="skill-bar-wrap"><div class="skill-label"><span>Embedded Systems</span><span>74%</span></div><div class="bar-bg"><div class="bar-fill" data-width="74"></div></div></div>
+        </div>
+        <div>
+          <div class="skill-group-title">// Tools & Technologies</div>
+          <div class="chip-grid">
+            <span class="chip">PyTorch</span><span class="chip">TensorFlow</span><span class="chip">OpenCV</span><span class="chip">YOLOv8</span><span class="chip">ONNX</span><span class="chip">Gazebo</span><span class="chip">MATLAB</span><span class="chip">Docker</span><span class="chip">Linux</span><span class="chip">Git</span><span class="chip">Arduino</span><span class="chip">Verilog</span><span class="chip">KiCAD</span><span class="chip">Onshape</span><span class="chip">Fusion360</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-wrap" id="contact">
+      <div class="section-header"><span class="section-num">05</span><span class="section-title">Contact</span><div class="section-line"></div></div>
+      <div class="contact-inner">
+        <div>
+          <p class="contact-text">Seeking internships in robotics, autonomous systems, and AI. Let's build something that moves.</p>
+          <div class="contact-links">
+            <a href="mailto:sundararajanshyam1@gmail.com" class="contact-link">✉ &nbsp; sundararajanshyam1@gmail.com</a>
+            <a href="#" class="contact-link">⌥ &nbsp; github.com/shyam</a>
+            <a href="#" class="contact-link">◈ &nbsp; linkedin.com/in/shyam</a>
+            <a href="#" class="contact-link">◎ &nbsp; UC Santa Cruz — San Jose, CA</a>
+          </div>
+        </div>
+        <div>
+          <form onsubmit="handleSubmit(event)">
+            <div class="form-group"><label>// Name</label><input type="text" placeholder="ENTER_NAME"/></div>
+            <div class="form-group"><label>// Email</label><input type="email" placeholder="ENTER_EMAIL"/></div>
+            <div class="form-group"><label>// Message</label><textarea placeholder="ENTER_MESSAGE..."></textarea></div>
+            <button type="submit" class="submit-btn">[ TRANSMIT MESSAGE ]</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <footer><p>© 2025 <span>Shyam Narayan Sundararajan</span> — Robotics Engineer // ALL SYSTEMS NOMINAL</p></footer>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════
+   CURSOR
+════════════════════════════════════════════════ */
+const cursorDot = document.getElementById('cursor-dot');
+let mx = window.innerWidth/2, my = window.innerHeight/2;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursorDot.style.left = mx + 'px';
+  cursorDot.style.top  = my + 'px';
+});
+
+/* ════════════════════════════════════════════════
+   DRONE INTRO + HOVER SEQUENCE
+   
+   Phase 1 (0→2.2s):  Drone appears tiny at center, grows toward viewer
+   Phase 2 (2.2→3.2s): Drone glides to hero hover position (upper-center)
+   Phase 3 (3.2s+):   Intro overlay fades, banner appears, drone paces
+                       Everything else fades in staggered
+════════════════════════════════════════════════ */
+const droneEl   = document.getElementById('drone');
+const bannerEl  = document.getElementById('drone-banner');
+const introEl   = document.getElementById('intro');
+const introGrid = document.getElementById('intro-grid');
+
+// Drone SVG dims
+const DW = 420, DH = 210;
+
+// Easing functions
+function easeOutExpo(t){ return t===1 ? 1 : 1-Math.pow(2,-10*t); }
+function easeInOutQuart(t){ return t<.5 ? 8*t*t*t*t : 1-Math.pow(-2*t+2,4)/2; }
+function easeOutBack(t){ const c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+// ── HERO HOVER TARGET ──
+function getHoverTarget() {
+  const cCol = document.querySelector('.content-col');
+  const rect  = cCol ? cCol.getBoundingClientRect() : {left:280, right:window.innerWidth-280};
+  const cx    = (rect.left + rect.right) / 2;
+  const cy    = window.innerHeight * 0.26;
+  return { x: cx, y: cy };
+}
+
+// ── POSITION DRONE + BANNER (hero mode only) ──
+function positionDroneAndBanner(x, y, scale) {
+  droneEl.style.left      = x + 'px';
+  droneEl.style.top       = y + 'px';
+  droneEl.style.transform = `translate(-50%,-50%) scale(${scale})`;
+
+  if (bannerEl.classList.contains('visible')) {
+    const droneHalfH = (DH / 2) * scale;
+    const bannerTop  = y + droneHalfH + 28;
+    const bannerW    = bannerEl.offsetWidth || 520;
+    bannerEl.style.left = (x - bannerW / 2) + 'px';
+    bannerEl.style.top  = bannerTop + 'px';
+  }
+}
+
+// PACING STATE — drone wanders slightly while hovering
+let pacePhase = 0;
+let paceDroneX, paceDroneY;
+let introComplete = false;
+
+function getPaceOffset(t) {
+  // Lazy patrol drift — gentle side-to-side with slight vertical bob
+  const px = Math.sin(t * 0.35) * 55 + Math.cos(t * 0.19) * 18;
+  const py = Math.cos(t * 0.28) * 12 + Math.sin(t * 0.14) * 7;
+  return { px, py };
+}
+
+// Intro animation
+let startTs = null;
+const PHASE1_DUR = 2.0;  // approach from far
+const PHASE2_DUR = 1.0;  // glide to hover spot
+const PHASE2_START = PHASE1_DUR;
+const TOTAL_INTRO  = PHASE1_DUR + PHASE2_DUR;
+
+let heroRevealed = 0;
+const HERO_ELS = Array.from(document.querySelectorAll('.hi'));
+
+function introLoop(ts) {
+  if (!startTs) startTs = ts;
+  const elapsed = (ts - startTs) / 1000;
+
+  // Grid fades in early
+  if (elapsed > 0.2) introGrid.classList.add('visible');
+
+  const screenCX = window.innerWidth  / 2;
+  const screenCY = window.innerHeight / 2;
+  const hover    = getHoverTarget();
+
+  if (elapsed < PHASE2_START) {
+    // PHASE 1: zoom in from tiny dot to full size at center
+    const prog  = clamp(elapsed / PHASE1_DUR, 0, 1);
+    const eased = easeOutExpo(prog);
+    const scale   = lerp(0.03, 1.0, eased);
+    const opacity = clamp(elapsed / 0.4, 0, 1);
+    droneEl.style.left      = screenCX + 'px';
+    droneEl.style.top       = screenCY + 'px';
+    droneEl.style.opacity   = opacity;
+    droneEl.style.transform = `translate(-50%,-50%) scale(${scale})`;
+
+  } else if (elapsed < TOTAL_INTRO) {
+    // PHASE 2: glide from screen center → hover position
+    const prog  = clamp((elapsed - PHASE2_START) / PHASE2_DUR, 0, 1);
+    const eased = easeInOutQuart(prog);
+    const x = lerp(screenCX, hover.x, eased);
+    const y = lerp(screenCY, hover.y, eased);
+    droneEl.style.left      = x + 'px';
+    droneEl.style.top       = y + 'px';
+    droneEl.style.opacity   = '1';
+    droneEl.style.transform = `translate(-50%,-50%) scale(0.78)`;
+
+  } else {
+    // PHASE 3: settled — pacing + scroll-driven docking
+    if (!introComplete) {
+      introComplete = true;
+
+      // Fade out intro overlay
+      introEl.classList.add('fading');
+      setTimeout(() => introEl.classList.add('gone'), 900);
+
+      // Show banner
+      bannerEl.classList.add('visible');
+      bannerEl.style.opacity = '1';
+
+      // Reveal arms
+      setTimeout(() => {
+        document.querySelectorAll('.arm-col').forEach(a => a.classList.add('visible'));
+      }, 500);
+
+      // Stagger hero elements
+      const heroDelay = 500;
+      HERO_ELS.forEach((el, i) => {
+        setTimeout(() => el.classList.add('reveal'), heroDelay + i * 160);
+      });
+
+      // Unlock scroll
+      setTimeout(() => { document.body.style.overflowY = 'auto'; }, 800);
+
+      // Start typewriter
+      setTimeout(startTypewriter, heroDelay + HERO_ELS.length * 160 + 100);
+    }
+
+    // ── SCROLL-DRIVEN TRANSITION ──
+    // scrollT: 0 = top of hero, 1 = drone has fully delivered name to nav
+    const scrollY = window.scrollY || window.pageYOffset;
+    const scrollT = Math.min(Math.max(scrollY / 300, 0), 1);
+    const easedT  = scrollT * scrollT * (3 - 2 * scrollT); // smoothstep
+
+    // Pacing only active in hero (slows to zero as scrollT→1)
+    pacePhase += 0.013 * (1 - easedT);
+    const { px, py } = getPaceOffset(pacePhase);
+    const hov = getHoverTarget();
+
+    // Nav identity left-edge target (where drone drops the name)
+    // Nav is 70px tall, identity starts ~40px from left
+    const navTargetX = 180;
+    const navTargetY = 35;
+    const navTargetScale = 0.18;
+
+    // Interpolate drone position: hero hover → nav left
+    positionDroneAndBanner(hov.x + px * (1 - easedT), hov.y + py * (1 - easedT), lerp(0.78, navTargetScale, easedT));
+
+    // Banner fades out in first half of scroll
+    const bannerAlpha = Math.max(0, 1 - easedT * 2.2);
+    if (bannerEl.classList.contains('visible'))
+      bannerEl.style.opacity = bannerAlpha;
+
+    // Drone fades out in second half (after delivering)
+    const droneAlpha = scrollT < 0.55 ? 1 : Math.max(0, 1 - (scrollT - 0.55) / 0.35);
+    droneEl.style.opacity = droneAlpha;
+
+    // Hide CTA when scrolling away from hero
+    const ctaWrap = document.querySelector('.hero-cta-wrap');
+    if (ctaWrap) ctaWrap.style.opacity = scrollT > 0.15 ? Math.max(0, 1 - (scrollT - 0.15) / 0.2) : (ctaWrap.classList.contains('reveal') ? '1' : '0');
+
+    // Nav identity fades in as drone arrives and disappears
+    const navIdentityAlpha = scrollT < 0.6 ? 0 : Math.min(1, (scrollT - 0.6) / 0.3);
+    const navId = document.getElementById('nav-identity');
+    if (navId) navId.style.opacity = navIdentityAlpha;
+    if (navIdentityAlpha > 0.05 && navId) navId.classList.add('visible');
+  }
+
+  requestAnimationFrame(introLoop);
+}
+
+// Lock scroll, start intro
+document.body.style.overflowY = 'hidden';
+setTimeout(() => requestAnimationFrame(introLoop), 80);
+
+/* ════════════════════════════════════════════════
+   TYPEWRITER
+════════════════════════════════════════════════ */
+const phrases = [
+  'Robotics Engineer', 'Autonomous Systems Builder',
+  'Computer Vision Developer', 'LLM + RAG Integrator',
+  'Embedded Systems Hacker',  'Quantum Path Planner',
+];
+let pi=0, ci=0, del=false;
+const twEl = document.getElementById('typewriter');
+function startTypewriter() { if (!window._twGo) { window._twGo=true; type(); } }
+function type() {
+  const c = phrases[pi];
+  if (!del) { twEl.textContent=c.slice(0,++ci); if(ci===c.length){del=true;setTimeout(type,2000);return;} }
+  else       { twEl.textContent=c.slice(0,--ci); if(ci===0){del=false;pi=(pi+1)%phrases.length;} }
+  setTimeout(type, del ? 50 : 80);
+}
+
+/* ════════════════════════════════════════════════
+   TWO-ARM IK — cursor tracking
+════════════════════════════════════════════════ */
+const NS = 'http://www.w3.org/2000/svg';
+const ARM_BASE = { x:120, y:880 };
+const S1=210, S2=165, S3=85;
+
+function mkEl(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k,v));
+  return e;
+}
+function tube(svg, x1,y1,x2,y2, w, color, op) {
+  svg.appendChild(mkEl('line',{x1,y1,x2,y2,stroke:color,'stroke-width':w,'stroke-linecap':'round',opacity:op}));
+}
+
+function drawArm(svgEl, tx, ty, mirrored) {
+  svgEl.innerHTML = '';
+  const B = ARM_BASE;
+  const dx=tx-B.x, dy=ty-B.y;
+  const dist  = Math.sqrt(dx*dx+dy*dy);
+  const angle = Math.atan2(dy,dx);
+  const reach = Math.min(dist, S1+S2-10);
+  const cosA  = clamp((S1*S1+reach*reach-S2*S2)/(2*S1*reach), -1, 1);
+  const a1    = angle - Math.acos(cosA)*(mirrored?-1:1);
+  const ex = B.x+S1*Math.cos(a1), ey = B.y+S1*Math.sin(a1);
+  const a2 = Math.atan2(ty-ey, tx-ex);
+  const wr = Math.min(Math.sqrt((tx-ex)**2+(ty-ey)**2), S2+S3-5);
+  const wx = ex+(wr/(S2+S3))*S2*Math.cos(a2), wy = ey+(wr/(S2+S3))*S2*Math.sin(a2);
+  const a3 = Math.atan2(ty-wy, tx-wx);
+  const tipx = wx+S3*Math.cos(a3), tipy = wy+S3*Math.sin(a3);
+
+  const C1='#ffd700', C2='#cd7f32', DIM='#b8960c';
+
+  tube(svgEl,B.x,B.y,ex,ey,  22,`rgba(255,215,0,0.05)`,1);
+  tube(svgEl,ex,ey,wx,wy,    17,`rgba(255,215,0,0.05)`,1);
+  tube(svgEl,wx,wy,tipx,tipy,12,`rgba(205,127,50,0.06)`,1);
+  tube(svgEl,B.x,B.y,ex,ey,  10,'#0d0a00',1);
+  tube(svgEl,B.x,B.y,ex,ey,   6,'#150f00',1);
+  tube(svgEl,B.x,B.y,ex,ey,   3,DIM,0.6);
+  tube(svgEl,B.x,B.y,ex,ey,   1,C1,0.9);
+  tube(svgEl,ex,ey,wx,wy,     8,'#0d0a00',1);
+  tube(svgEl,ex,ey,wx,wy,     4,'#150f00',1);
+  tube(svgEl,ex,ey,wx,wy,     2,DIM,0.55);
+  tube(svgEl,ex,ey,wx,wy,  0.8,C1,0.85);
+  tube(svgEl,wx,wy,tipx,tipy, 6,'#0d0a00',1);
+  tube(svgEl,wx,wy,tipx,tipy, 3,'#150f00',1);
+  tube(svgEl,wx,wy,tipx,tipy,1.5,C2,0.6);
+  tube(svgEl,wx,wy,tipx,tipy,0.7,C1,0.85);
+
+  function joint(cx,cy,r,fill,stroke) {
+    svgEl.appendChild(mkEl('circle',{cx,cy,r,fill,stroke,'stroke-width':'1.5'}));
+    svgEl.appendChild(mkEl('circle',{cx,cy,r:r*1.6,fill:'none',stroke:'rgba(255,215,0,0.15)','stroke-width':'1'}));
+    svgEl.appendChild(mkEl('circle',{cx,cy,r:r*0.42,fill:stroke}));
+  }
+  joint(B.x,B.y,13,'#0d0a00',C1);
+  joint(ex,ey,   10,'#0d0a00',C1);
+  joint(wx,wy,    8,'#0d0a00',C2);
+
+  const perp = a3+Math.PI/2;
+  for (const s of [-1,1]) {
+    const fx=tipx+s*9*Math.cos(perp), fy=tipy+s*9*Math.sin(perp);
+    const fx2=fx+14*Math.cos(a3),     fy2=fy+14*Math.sin(a3);
+    tube(svgEl,fx,fy,fx2,fy2,3,'#0d0a00',1);
+    tube(svgEl,fx,fy,fx2,fy2,1.5,C1,0.7);
+    svgEl.appendChild(mkEl('circle',{cx:fx2,cy:fy2,r:2.5,fill:C1,opacity:'0.9'}));
+  }
+  svgEl.appendChild(mkEl('circle',{cx:tipx,cy:tipy,r:4,fill:C1}));
+  svgEl.appendChild(mkEl('circle',{cx:tipx,cy:tipy,r:8,fill:'none',stroke:'rgba(255,215,0,0.3)','stroke-width':'1'}));
+}
+
+function toArmSpace(clientX, clientY, colId) {
+  const col  = document.getElementById(colId);
+  const rect = col.getBoundingClientRect();
+  return { x:(clientX-rect.left)*(240/rect.width), y:(clientY-rect.top)*(900/rect.height) };
+}
+
+function isOverContent(x) {
+  const l = document.getElementById('arm-left-col').getBoundingClientRect();
+  const r = document.getElementById('arm-right-col').getBoundingClientRect();
+  return x > l.right && x < r.left;
+}
+
+let cLx=120,cLy=600, cRx=120,cRy=600;
+let tLx=120,tLy=600, tRx=120,tRy=600;
+const lSvg  = document.getElementById('arm-left-svg');
+const rSvg  = document.getElementById('arm-right-svg');
+const lWrap = document.getElementById('arm-left-wrap');
+const rWrap = document.getElementById('arm-right-wrap');
+
+document.addEventListener('mousemove', e => {
+  const lp = toArmSpace(e.clientX, e.clientY, 'arm-left-col');
+  const rp = toArmSpace(e.clientX, e.clientY, 'arm-right-col');
+  tLx=lp.x; tLy=lp.y; tRx=rp.x; tRy=rp.y;
+  const over = isOverContent(e.clientX);
+  lWrap.classList.toggle('over-content', over);
+  rWrap.classList.toggle('over-content', over);
+});
+
+function armLoop() {
+  const t = 0.08;
+  cLx+=(tLx-cLx)*t; cLy+=(tLy-cLy)*t;
+  cRx+=(tRx-cRx)*t; cRy+=(tRy-cRy)*t;
+  drawArm(lSvg, cLx, cLy, false);
+  drawArm(rSvg, cRx, cRy, true);
+  requestAnimationFrame(armLoop);
+}
+armLoop();
+
+/* ════════════════════════════════════════════════
+   SKILL BARS + NAV + FORM
+════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════
+   SCROLL — fade drone+banner out, show nav past hero
+════════════════════════════════════════════════ */
+
+
+// Nav active section tracking
+window.addEventListener('scroll', () => {
+  const mid = window.innerHeight * 0.4; let active = 'hero';
+  ['hero','about','projects','education','skills','contact'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top <= mid) active = id;
+  });
+  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.section === active));
+}, { passive: true });
+
+const skillObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){ document.querySelectorAll('.bar-fill').forEach(b=>b.style.width=b.dataset.width+'%'); skillObs.disconnect(); }});
+}, {threshold:0.3});
+const sk = document.getElementById('skills');
+if(sk) skillObs.observe(sk);
+
+function handleSubmit(e) {
+  e.preventDefault();
+  const b=e.target.querySelector('.submit-btn');
+  b.textContent='[ TRANSMISSION SUCCESSFUL ]';
+  b.style.borderColor='var(--accent)';b.style.color='var(--accent)';
+  setTimeout(()=>{ b.textContent='[ TRANSMIT MESSAGE ]'; b.style.borderColor=''; b.style.color=''; e.target.reset(); },3000);
+}
+</script>
+</body>
+</html>

@@ -745,9 +745,10 @@ const PROJECTS = [
       'Space–time QUBO formulation for grid multi-robot path planning: a path cost plus penalty terms for obstacles, motion feasibility, boundaries, and inter-robot collisions.',
       'Parallelized benchmarking framework: 45,000 instances (135,000 planner runs across A*, RRT*, and QUBO) over 5×5, 7×7, and 10×10 grids, 21 obstacle densities (0–50%), and narrow corridors.',
       'Measured a sharp feasibility boundary for cold-start simulated annealing: 70% success at 425 binary variables (5×5) vs 0% at 756 (6×6), with 95% confidence intervals.',
-      'Multi-robot experiments with up to 6 robots (joint) and 8 (sequential planners). Paper draft under revision.',
+      'On classical hardware A* solves in ~0.05 ms vs ~5,000 ms for QUBO + SA (four orders of magnitude), locating the bottleneck in the solver rather than the formulation.',
+      'Multi-robot experiments with up to 6 robots (joint) and 8 (sequential planners): joint RRT* success falls from 70% to 7% as robots scale from 2 to 4, while QUBO encodes inter-robot collision avoidance in a single penalty term. Includes a D-Wave hardware runner. Paper draft under revision.',
     ],
-    metrics: [['45K', 'benchmark instances'], ['135K', 'planner runs'], ['425 → 756', 'vars: 70% → 0% SA success']],
+    metrics: [['45K', 'benchmark instances'], ['135K', 'planner runs'], ['425 → 756', 'vars: 70% → 0% SA success'], ['10⁴×', 'A* vs QUBO+SA speed']],
   },
   {
     title: 'DreamLoop', sub: 'Stress-testing AV perception with generative weather on a DGX Spark', badge: 'NemoClaw',
@@ -766,7 +767,7 @@ const PROJECTS = [
     stack: ['Python', 'YOLOv8n', 'NCNN', 'OpenCV', 'Raspberry Pi 4B', 'HTTP'],
     points: [
       'YOLOv8n exported to NCNN for real-time detection on a Pi 4B, with a centroid tracker and a traffic-state classifier.',
-      'Streams annotated video to a browser and pushes perception JSON (lead vehicle, hazards, confidence) to a backend.',
+      'Streams annotated video to a browser (color-coded boxes for moving cars, stopped cars, and pedestrians, with track IDs and pixel speed) and pushes perception JSON (traffic state, lead vehicle, hazards, confidence) to a backend.',
       'Headless production mode, a mock-camera mode for backend testing, and camera-probe diagnostics.',
     ],
     metrics: [['Pi 4B', 'on-device'], ['3', 'run modes']],
@@ -798,11 +799,11 @@ const PROJECTS = [
     cats: ['AI'], glyph: '🤟', repo: 'Sign_Bridge',
     stack: ['Swift', 'SwiftUI', 'Vision Hand Pose', 'Speech', 'AVFoundation'],
     points: [
-      'Camera hand-pose tracking feeds a gesture classifier with temporal smoothing to produce gesture tokens.',
+      'Apple Vision hand-pose joints are normalized and classified into 8 gestures (HELLO, STOP, YES, NO, HELP, THANK YOU, PLEASE, MORE) from finger-extension patterns, with temporal smoothing to produce stable gesture tokens.',
       'A phrase predictor turns tokens into sentences, which are spoken aloud by speech synthesis.',
       'Speech recognition handles the reverse direction so both people can talk.',
     ],
-    metrics: [['2-way', 'sign ↔ speech']],
+    metrics: [['2-way', 'sign ↔ speech'], ['8', 'gestures']],
   },
   {
     title: 'Jarvis', sub: 'Document-grounded RAG assistant', badge: 'RAG',
